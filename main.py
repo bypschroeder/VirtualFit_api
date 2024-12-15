@@ -1,3 +1,4 @@
+import docker.types
 from flask import Flask, request, jsonify
 import os
 import docker
@@ -29,7 +30,7 @@ def generate_3d_model():
         # image_path = os.path.join(images_folder, "sample.jpg")
         # image_file.save(image_path)
 
-        result = client.containers.run("openpose/openpose:latest", command=f"--image_dir {DATA_FOLDER}/images --write_json {DATA_FOLDER}/keypoints --display 0 --write_images 0", remove=True)
+        result = client.containers.run("openpose/openpose:latest", device_request=[docker.types.DeviceRequest(count=-1, capabilities=[["gpu"]])], command=f"--image_dir {DATA_FOLDER}/images --write_json {DATA_FOLDER}/keypoints --display 0 --write_images 0", remove=True)
         print(result)
 
         return jsonify({
