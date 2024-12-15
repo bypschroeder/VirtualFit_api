@@ -30,11 +30,10 @@ def generate_3d_model():
         # image_path = os.path.join(images_folder, "sample.jpg")
         # image_file.save(image_path)
 
-        result = client.containers.run("openpose", device_requests=[docker.types.DeviceRequest(count=-1, capabilities=[["gpu"]])], command=f"--image_dir {DATA_FOLDER}/images --write_json {DATA_FOLDER}/keypoints --face --hand --display 0 --render_pose 0", remove=True, volumes={"virtualfit_data": {"bind": "/data", "mode": "rw"}})
+        client.containers.run("openpose", device_requests=[docker.types.DeviceRequest(count=-1, capabilities=[["gpu"]])], command=f"--image_dir {DATA_FOLDER}/images --write_json {DATA_FOLDER}/keypoints --face --hand --display 0 --render_pose 0", remove=True, volumes={"virtualfit_data": {"bind": "/data", "mode": "rw"}})
 
         return jsonify({
             "message": "OpenPose execution successful",
-            "output": result
         }), 200
     except docker.errors.NotFound as e:
         return jsonify({'error': e}), 404
