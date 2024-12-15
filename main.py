@@ -34,7 +34,7 @@ def generate_3d_model():
 
         return jsonify({
             "message": "OpenPose execution successful",
-            "output": result.output.decode("utf-8")
+            "output": result
         }), 200
     except docker.errors.NotFound as e:
         return jsonify({'error': e}), 404
