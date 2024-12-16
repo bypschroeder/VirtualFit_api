@@ -1,5 +1,5 @@
 import docker.types
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import os
 import docker
 
@@ -16,25 +16,38 @@ def index():
 @app.route('/generate-3d-model', methods=['POST'])
 def generate_3d_model():
     try:
-        # if "image" not in request.files:
-        #     return jsonify({'error': 'No image file provided'}), 400
-        
-        # image_file = request.files['image']
+        if "gender" not in request.form:
+            return jsonify({'error': 'No gender provided'}), 400
 
-        # if image_file.filename == '':
-        #     return jsonify({'error': 'No image file provided'}), 400
+        gender = request.form['gender']
+        if gender not in ['male', 'neutral', 'female']:
+            return jsonify({'error': 'Invalid gender provided'}), 400
         
-        # images_folder = os.path.join(DATA_FOLDER, 'images')
-        # os.makedirs(images_folder, exist_ok=True)
+        if "image" not in request.files:
+            return jsonify({'error': 'No image file provided'}), 400
+        
+        image_file = request.files['image']
 
-        # image_path = os.path.join(images_folder, "sample.jpg")
-        # image_file.save(image_path)
+        if image_file.filename == '':
+            return jsonify({'error': 'No image file provided'}), 400
+        
+        images_folder = os.path.join(DATA_FOLDER, 'images')
+        os.makedirs(images_folder, exist_ok=True)
+
+        image_path = os.path.join(images_folder, "sample.jpg")
+        image_file.save(image_path)
 
         client.containers.run("openpose", device_requests=[docker.types.DeviceRequest(count=-1, capabilities=[["gpu"]])], command=f"--image_dir {DATA_FOLDER}/images --write_json {DATA_FOLDER}/keypoints --face --hand --display 0 --render_pose 0", remove=True, volumes={"virtualfit_data": {"bind": "/data", "mode": "rw"}})
 
-        return jsonify({
-            "message": "OpenPose execution successful",
-        }), 200
+        client.containers.run("smplify-x", device_requests=[docker.types.DeviceRequest(count=-1, capabilities=[["gpu"]])], command=f"--data_folder {DATA_FOLDER} --output_folder{DATA_FOLDER}/smplify-x_results --gender={gender}", remove=True, volumes={"virtualfit_data": {"bind": "/data", "mode": "rw"}})
+
+        obj_file_path = os.path.join(DATA_FOLDER, 'smplify-x_results', 'meshes', 'sample', '000.obj')
+        if not os.path.exists(obj_file_path):
+            return jsonify({'error': 'Failed to generate 3D model, .obj file not found'}), 400
+        
+        os.remove(image_path)
+
+        return send_file(obj_file_path, as_attachment=True)
     except docker.errors.NotFound as e:
         return jsonify({'error': e}), 404
 
