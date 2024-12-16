@@ -5,7 +5,7 @@ import docker
 
 app = Flask(__name__)
 
-DATA_FOLDER = '/data'
+DATA_FOLDER = '../data'
 
 client = docker.from_env()
 
@@ -39,7 +39,7 @@ def generate_3d_model():
 
         client.containers.run("openpose", device_requests=[docker.types.DeviceRequest(count=-1, capabilities=[["gpu"]])], command=f"--image_dir {DATA_FOLDER}/images --write_json {DATA_FOLDER}/keypoints --face --hand --display 0 --render_pose 0", remove=True, volumes={"virtualfit_data": {"bind": "/data", "mode": "rw"}})
 
-        client.containers.run("smplify-x", device_requests=[docker.types.DeviceRequest(count=-1, capabilities=[["gpu"]])], command=f"--data_folder {DATA_FOLDER} --output_folder {DATA_FOLDER}/smplify-x_results --gender={gender}", remove=True, volumes={"virtualfit_data": {"bind": "/data", "mode": "rw"}})
+        client.containers.run("smplify-x", device_requests=[docker.types.DeviceRequest(count=-1, capabilities=[["gpu"]])], command=f"python3 smplifyx/main.py --config cfg_files/fit_smplx.yaml --data_folder {DATA_FOLDER} --output_folder {DATA_FOLDER}/smplify-x_results --visualize=False --gender={gender} --model_folder ../smplx/models --vposer_ckpt ../vposer/V02_05", remove=True, volumes={"virtualfit_data": {"bind": "/data", "mode": "rw"}})
 
         obj_file_path = os.path.join(DATA_FOLDER, 'smplify-x_results', 'meshes', 'sample', '000.obj')
         if not os.path.exists(obj_file_path):
