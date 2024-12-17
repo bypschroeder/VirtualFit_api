@@ -37,17 +37,25 @@ def generate_3d_model():
         image_path = os.path.join(images_folder, "sample.jpg")
         image_file.save(image_path)
 
-        client.containers.run("openpose", device_requests=[docker.types.DeviceRequest(count=-1, capabilities=[["gpu"]])], command=f"--image_dir {DATA_FOLDER}/images --write_json {DATA_FOLDER}/keypoints --face --hand --display 0 --render_pose 0", remove=True, volumes={"virtualfit_data": {"bind": "/data", "mode": "rw"}})
+        client.containers.run("openpose", device_requests=[docker.types.DeviceRequest(count=-1, capabilities=[["gpu"]])], command=f"/openpose/build/examples/openpose/openpose.bin --image_dir {DATA_FOLDER}/images --write_json {DATA_FOLDER}/keypoints --face --hand --display 0 --render_pose 0", remove=True, volumes={"virtualfit_data": {"bind": "/data", "mode": "rw"}})
 
         client.containers.run("smplify-x", device_requests=[docker.types.DeviceRequest(count=-1, capabilities=[["gpu"]])], command=f"python3 smplifyx/main.py --config cfg_files/fit_smplx.yaml --data_folder {DATA_FOLDER} --output_folder {DATA_FOLDER}/smplify-x_results --visualize=False --gender={gender} --model_folder ../smplx/models --vposer_ckpt ../vposer/V02_05", remove=True, volumes={"virtualfit_data": {"bind": "/data", "mode": "rw"}})
 
         obj_file_path = os.path.join(DATA_FOLDER, 'smplify-x_results', 'meshes', 'sample', '000.obj')
+
+        client.containers.run("blender", device_requests=[docker.types.DeviceRequest(count=-1, capabilities=[["gpu"]])], command=f"blender -b -P shade_smooth.py -- --obj {obj_file_path}", remove=True, volumes={"virtualfit_data": {"bind": "/data", "mode": "rw"}})
+
+        smooth_obj_file_path = os.path.join(DATA_FOLDER, 'smplify-x_results', 'meshes', 'sample', '000_smooth.obj')
+        
         if not os.path.exists(obj_file_path):
             return jsonify({'error': 'Failed to generate 3D model, .obj file not found'}), 400
         
+        if not os.path.exists(smooth_obj_file_path):
+            return jsonify({'error': 'Failed to shape smooth 3d Model'}), 400
+        
         os.remove(image_path)
 
-        return send_file(obj_file_path, as_attachment=True)
+        return send_file(smooth_obj_file_path, as_attachment=True)
     except docker.errors.NotFound as e:
         return jsonify({'error': e}), 404
 
